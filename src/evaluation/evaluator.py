@@ -156,23 +156,33 @@ class ParkinsonEvaluator(BaseEvaluator):
         
         try:
             cv_results = {}
-            
+
             # Cross-validation for each metric
             for metric in self.metrics:
-                scores = cross_val_score(
-                    model.model, X, y, 
-                    groups=groups,  # Use groups parameter for StratifiedGroupKFold
-                    cv=cv_strategy, 
-                    scoring=metric, 
-                    n_jobs=-1
-                )
-                cv_results[metric] = {
-                    'scores': scores,
-                    'mean': scores.mean(),
-                    'std': scores.std(),
-                    'min': scores.min(),
-                    'max': scores.max()
-                }
+                try:
+                    scores = cross_val_score(
+                        model.model, X, y,
+                        groups=groups,  # Use groups parameter for StratifiedGroupKFold
+                        cv=cv_strategy,
+                        scoring=metric,
+                        n_jobs=-1,
+                        error_score=np.nan
+                    )
+                    # Filter out NaN scores (e.g. folds where only one class was present)
+                    valid_scores = scores[~np.isnan(scores)]
+                    if len(valid_scores) == 0:
+                        self.logger.warning(f"All CV folds returned NaN for {metric}, skipping")
+                        continue
+                    cv_results[metric] = {
+                        'scores': valid_scores,
+                        'mean': valid_scores.mean(),
+                        'std': valid_scores.std(),
+                        'min': valid_scores.min(),
+                        'max': valid_scores.max()
+                    }
+                except Exception as metric_error:
+                    self.logger.warning(f"Could not compute CV for {metric}: {metric_error}")
+                    continue
             
             # Store results
             self.results['cross_validation'] = cv_results

@@ -72,21 +72,23 @@ class ConfigManager:
     def _setup_logging(self) -> None:
         """Setup logging based on configuration"""
         log_config = self.config.get('logging', {})
-        
+
         # Create logs directory if it doesn't exist
         log_file = log_config.get('file', 'parkinsons_analysis.log')
         log_dir = Path(log_file).parent
         log_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Configure logging
-        logging.basicConfig(
-            level=getattr(logging, log_config.get('level', 'INFO')),
-            format=log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
-            handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler() if log_config.get('console', True) else logging.NullHandler()
-            ]
-        )
+
+        # Only configure root logger if it hasn't been set up already
+        root_logger = logging.getLogger()
+        if not root_logger.handlers:
+            logging.basicConfig(
+                level=getattr(logging, log_config.get('level', 'INFO')),
+                format=log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
+                handlers=[
+                    logging.FileHandler(log_file),
+                    logging.StreamHandler() if log_config.get('console', True) else logging.NullHandler()
+                ]
+            )
     
     def get(self, key: str, default: Any = None) -> Any:
         """
